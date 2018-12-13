@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Display.ContentDisplay;
+using OrchardCore.DisplayManagement.Handlers;
 using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.DisplayManagement.Views;
 using OrchardCore.Lists.Models;
@@ -23,6 +24,16 @@ namespace OrchardCore.Lists.Drivers
             _contentManager = contentManager;
         }
 
+        protected override void BuildPrefix(ContentItem model, string htmlFieldPrefix)
+        {
+            Prefix = "ContainedPart";
+
+            if (!string.IsNullOrEmpty(htmlFieldPrefix))
+            {
+                Prefix = htmlFieldPrefix + "." + Prefix;
+            }
+        }
+
         public override async Task<IDisplayResult> EditAsync(ContentItem model, IUpdateModel updater)
         {
             // This method can get called when a new content item is created, at that point
@@ -36,7 +47,7 @@ namespace OrchardCore.Lists.Drivers
             }
 
             var viewModel = new EditContainedPartViewModel();
-            if (await updater.TryUpdateModelAsync(viewModel, nameof(ListPart)) && viewModel.ContainerId != null)
+            if (await updater.TryUpdateModelAsync(viewModel, Prefix) && viewModel.ContainerId != null)
             {
                 // We are editing a content item that needs to be added to a container
                 // so we render the container id as part of the form
@@ -49,23 +60,24 @@ namespace OrchardCore.Lists.Drivers
 
         private IDisplayResult BuildShape(string containerId)
         {
-            return Dynamic("ListPart_ContainerId", shape =>
+            return Initialize<EditContainedPartViewModel>("ContainedPart_Edit", shape =>
             {
                 shape.ContainerId = containerId;
             })
             .Location("Content");
         }
 
-        public override async Task<IDisplayResult> UpdateAsync(ContentItem model, IUpdateModel updater)
+        public override async Task<IDisplayResult> UpdateAsync(ContentItem model, UpdateEditorContext context)
         {
             var viewModel = new EditContainedPartViewModel();
+            BuildPrefix(model, context.HtmlFieldPrefix);
 
-            if (await updater.TryUpdateModelAsync(viewModel, nameof(ListPart)) && viewModel.ContainerId != null)
+            if (await context.Updater.TryUpdateModelAsync(viewModel, Prefix) && viewModel.ContainerId != null)
             {
                 model.Alter<ContainedPart>(x => x.ListContentItemId = viewModel.ContainerId);
             }
 
-            return await base.UpdateAsync(model, updater);
+            return await EditAsync(model, context);
         }
     }
 }
