@@ -34,6 +34,7 @@ namespace OrchardCore.Users.Services
         private readonly IUserIdGenerator _userIdGenerator;
         private readonly ILogger _logger;
         private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly IEventDispatcher<IUserEventHandler, UserStore> _userEventsDispatcher;
 
         public UserStore(ISession session,
             IRoleService roleService,
@@ -41,7 +42,8 @@ namespace OrchardCore.Users.Services
             IUserIdGenerator userIdGenerator,
             ILogger<UserStore> logger,
             IEnumerable<IUserEventHandler> handlers,
-            IDataProtectionProvider dataProtectionProvider)
+            IDataProtectionProvider dataProtectionProvider,
+            IEventDispatcher<IUserEventHandler,UserStore> userEventsDispatcher)
         {
             _session = session;
             _roleService = roleService;
@@ -50,6 +52,7 @@ namespace OrchardCore.Users.Services
             _logger = logger;
             _dataProtectionProvider = dataProtectionProvider;
             Handlers = handlers;
+            _userEventsDispatcher = userEventsDispatcher;
         }
         public IEnumerable<IUserEventHandler> Handlers { get; private set; }
 
@@ -102,7 +105,8 @@ namespace OrchardCore.Users.Services
 
                 var context = new UserCreateContext(user);
 
-                await Handlers.InvokeAsync((handler, context) => handler.CreatingAsync(context), context, _logger);
+                //await Handlers.InvokeAsync((handler, context) => handler.CreatingAsync(context), context, _logger);
+                await _userEventsDispatcher.InvokeAsync((handler, context) => handler.CreatingAsync(context), context);
 
                 if (context.Cancel)
                 {
@@ -111,7 +115,8 @@ namespace OrchardCore.Users.Services
 
                 _session.Save(user);
                 await _session.SaveChangesAsync();
-                await Handlers.InvokeAsync((handler, context) => handler.CreatedAsync(context), context, _logger);
+                //await Handlers.InvokeAsync((handler, context) => handler.CreatedAsync(context), context, _logger);
+                await _userEventsDispatcher.InvokeAsync((handler, context) => handler.CreatedAsync(context), context);
             }
             catch (Exception e)
             {

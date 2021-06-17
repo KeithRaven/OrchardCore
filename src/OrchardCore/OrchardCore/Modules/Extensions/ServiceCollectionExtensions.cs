@@ -24,6 +24,7 @@ using OrchardCore.Environment.Shell.Builders;
 using OrchardCore.Environment.Shell.Configuration;
 using OrchardCore.Environment.Shell.Descriptor.Models;
 using OrchardCore.Environment.Shell.Models;
+using OrchardCore.Environment.Shell.Scope;
 using OrchardCore.Localization;
 using OrchardCore.Locking;
 using OrchardCore.Locking.Distributed;
@@ -115,6 +116,23 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IPoweredByMiddlewareOptions, PoweredByMiddlewareOptions>();
 
             services.AddScoped<IOrchardHelper, DefaultOrchardHelper>();
+
+            services.AddScoped(typeof(IEventDispatcher<,>), typeof(EventDispatcher<,>));
+
+            services.Configure<HandlerExceptionOptions>(opts => {
+                var configuration = ShellScope.Services.GetRequiredService<IShellConfiguration>();
+                switch (configuration["OrchardCore_Modules_Exceptions:ReThrow"])
+                {
+                    case "All":
+                        opts.RethrowAll();
+                        break;
+                    case null:
+                    case "Fatal":
+                        opts.RethrowFatal();
+                        break;
+                    default: throw new Exception("Invalid configuration value for OrchardCore_Modules_Exceptions:ReThrow");
+                }
+            });
 
             builder.ConfigureServices(s =>
             {
