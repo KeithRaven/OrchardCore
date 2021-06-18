@@ -1,27 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace OrchardCore.Modules
 {
-    public class EventDispatcher<TEvents, TCategory> : IEventDispatcher<TEvents, TCategory>
+    public class EventDispatcher<TEvents, TSource> : IEventDispatcher<TEvents, TSource>
     {
         private readonly IEnumerable<TEvents> _events;
         private readonly ILogger _logger;
-        private readonly HandlerExceptionOptions _exceptionOptions;
+        private readonly IExceptionRethrowPolicy<TEvents> _exceptionPolicy;
 
         public EventDispatcher(
             IEnumerable<TEvents> events,
-            ILogger<TCategory> logger,
-            IOptions<HandlerExceptionOptions> exceptionOptions)
+            ILogger<TSource> logger,
+            IExceptionRethrowPolicy<TEvents> eventsExceptionPolicy)
         {
             _events = events;
             _logger = logger;
-            _exceptionOptions = exceptionOptions.Value;
+            _exceptionPolicy = eventsExceptionPolicy;
         }
 
         public async Task InvokeAsync<T1>(Func<TEvents, T1, Task> dispatch, T1 arg1)
@@ -34,7 +31,7 @@ namespace OrchardCore.Modules
                 }
                 catch (Exception ex)
                 {
-                    if (_exceptionOptions.ShouldThrow<TEvents>(ex, _logger, arg1))
+                    if (_exceptionPolicy.ShouldThrow(ex))
                     {
                         throw;
                     }
@@ -56,7 +53,7 @@ namespace OrchardCore.Modules
                 }
                 catch (Exception ex)
                 {
-                    if (_exceptionOptions.ShouldThrow<TEvents>(ex, _logger, arg1, arg2))
+                    if (_exceptionPolicy.ShouldThrow(ex))
                     {
                         throw;
                     }

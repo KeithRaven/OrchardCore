@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddScoped(typeof(IEventDispatcher<,>), typeof(EventDispatcher<,>));
 
-            services.Configure<HandlerExceptionOptions>(opts => {
+            services.Configure((ExceptionRethrowOptions opts) => {
                 var configuration = ShellScope.Services.GetRequiredService<IShellConfiguration>();
                 switch (configuration["OrchardCore_Modules_Exceptions:ReThrow"])
                 {
